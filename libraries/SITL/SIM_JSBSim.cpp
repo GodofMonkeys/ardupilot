@@ -466,16 +466,16 @@ void JSBSim::drain_control_socket()
 void JSBSim::update(const struct sitl_input &input)
 {
     while (!initialised) {
-        if (!create_templates() ||
+        if (/*!create_templates() ||
             !start_JSBSim() ||
-            !open_control_socket() ||
+            !open_control_socket() ||*/
             !open_fdm_socket()) {
             time_now_us = 1;
             return;
         }
         initialised = true;
     }
-    send_servos(input);
+    //send_servos(input);
     recv_fdm(input);
     adjust_frame_time(rate_hz);
     sync_frame_time();
