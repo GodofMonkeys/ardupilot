@@ -476,6 +476,7 @@ void JSBSim::update(const struct sitl_input &input)
         initialised = true;
     }
     //send_servos(input);
+    printf("Test\n");
     recv_fdm(input);
     adjust_frame_time(rate_hz);
     sync_frame_time();
