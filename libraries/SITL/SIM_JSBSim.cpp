@@ -255,16 +255,18 @@ bool JSBSim::start_JSBSim(void)
 
 /*
   check for stdout from JSBSim
+
+  Viktor Disable Function
  */
 void JSBSim::check_stdout(void) const
 {
-    char line[100];
+    /*char line[100];
     ssize_t ret = ::read(jsbsim_stdout, line, sizeof(line));
     if (ret > 0) {
 #if DEBUG_JSBSIM
         write(1, line, ret);
 #endif
-    }
+    }*/
 }
 
 /*
@@ -292,6 +294,9 @@ bool JSBSim::expect(const char *str) const
 
 /*
   open control socket to JSBSim
+
+  Viktor
+  127.0.0.1 -> 192.168.10.120
  */
 bool JSBSim::open_control_socket(void)
 {
@@ -305,24 +310,28 @@ bool JSBSim::open_control_socket(void)
     sock_control.set_blocking(false);
     opened_control_socket = true;
 
+    //Viktor
     char startup[] =
         "info\n"
-        "resume\n"
+        /*"resume\n"
         "iterate 1\n"
-        "set atmosphere/turb-type 4\n";
+        "set atmosphere/turb-type 4\n"*/;
     sock_control.send(startup, strlen(startup));
     return true;
 }
 
 /*
   open fdm socket from JSBSim
+
+  Viktor
+  127.0.0.1 -> 0.0.0.0
  */
 bool JSBSim::open_fdm_socket(void)
 {
     if (opened_fdm_socket) {
         return true;
     }
-    if (!sock_fgfdm.bind("127.0.0.1", fdm_port)) {
+    if (!sock_fgfdm.bind("0.0.0.0", fdm_port)) {
         check_stdout();
         return false;
     }
@@ -338,6 +347,8 @@ bool JSBSim::open_fdm_socket(void)
 */
 void JSBSim::send_servos(const struct sitl_input &input)
 {
+    if (!opened_control_socket) return; //Viktor
+
     char *buf = nullptr;
     float aileron  = filtered_servo_angle(input, 0);
     float elevator = filtered_servo_angle(input, 1);
@@ -358,22 +369,23 @@ void JSBSim::send_servos(const struct sitl_input &input)
         elevator = (ch2-ch1)/2.0f;
         rudder   = (ch2+ch1)/2.0f;
     }
-    float wind_speed_fps = input.wind.speed / FEET_TO_METERS;
+    //float wind_speed_fps = input.wind.speed / FEET_TO_METERS;
+    //Viktor
     asprintf(&buf,
              "set fcs/aileron-cmd-norm %f\n"
              "set fcs/elevator-cmd-norm %f\n"
              "set fcs/rudder-cmd-norm %f\n"
              "set fcs/throttle-cmd-norm %f\n"
-             "set atmosphere/psiw-rad %f\n"
+             /*"set atmosphere/psiw-rad %f\n"
              "set atmosphere/wind-mag-fps %f\n"
              "set atmosphere/turbulence/milspec/windspeed_at_20ft_AGL-fps %f\n"
              "set atmosphere/turbulence/milspec/severity %f\n"
-             "iterate 1\n",
-             aileron, elevator, rudder, throttle,
+             "iterate 1\n"*/,
+             aileron, elevator, rudder, throttle/*,
              radians(input.wind.direction),
              wind_speed_fps,
              wind_speed_fps/3,
-             input.wind.turbulence);
+             input.wind.turbulence*/);
     ssize_t buflen = strlen(buf);
     ssize_t sent = sock_control.send(buf, buflen);
     free(buf);
@@ -462,21 +474,22 @@ void JSBSim::drain_control_socket()
 }
 /*
   update the JSBSim simulation by one time step
+
+  Viktor
  */
 void JSBSim::update(const struct sitl_input &input)
 {
     while (!initialised) {
         if (/*!create_templates() ||
-            !start_JSBSim() ||
-            !open_control_socket() ||*/
+            !start_JSBSim() ||*/
+            !open_control_socket() ||
             !open_fdm_socket()) {
             time_now_us = 1;
             return;
         }
         initialised = true;
     }
-    //send_servos(input);
-    printf("Test\n");
+    send_servos(input);
     recv_fdm(input);
     adjust_frame_time(rate_hz);
     sync_frame_time();
